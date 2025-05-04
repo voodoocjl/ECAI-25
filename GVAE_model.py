@@ -34,15 +34,19 @@ def transform_operations(max_idx):
 def generate_single_enta(gate_matrix, n_qubit):
 
     gate_matrix = gate_matrix.squeeze(0).cpu().detach().numpy()
-    # gate_matrix = np.array(gate_matrix)
-    single = [[i+1] for i in range(n_qubit)]
-    enta = [[i+1] for i in range(n_qubit)]
-    single_list_info = [[0,0],[0,1],[1,0],[1,1]]
-    for n in range(0, len(gate_matrix), n_qubit*2):
-        qubit_info = gate_matrix[n:n+n_qubit, :-n_qubit] 
-        adj_info = gate_matrix[n+n_qubit:n+2*n_qubit, -n_qubit:]
+    # transfer gate_matrix into one-hot format
+    one_hot_gate_matrix = np.zeros_like(gate_matrix, dtype=int)
+    max_indices = np.argmax(gate_matrix, axis=1)
+    one_hot_gate_matrix[np.arange(gate_matrix.shape[0]), max_indices] = 1
+
+    single = [[i + 1] for i in range(n_qubit)]
+    enta = [[i + 1] for i in range(n_qubit)]
+    single_list_info = [[0, 0], [0, 1], [1, 0], [1, 1]]
+    for n in range(0, len(one_hot_gate_matrix), n_qubit * 2):
+        qubit_info = one_hot_gate_matrix[n:n+n_qubit, :-n_qubit]
+        adj_info = one_hot_gate_matrix[n+n_qubit:n+2*n_qubit, -n_qubit:]
         for q in range(n_qubit):
-            single_res = np.sum(qubit_info[q]*np.array((0,1,2,3)))
+            single_res = np.sum(qubit_info[q] * np.array((0, 1, 2, 3)))
             single[q].extend(single_list_info[single_res])
             try:
                 enta[q].append(int(np.squeeze(np.argwhere(adj_info[q])))+1)
@@ -50,6 +54,67 @@ def generate_single_enta(gate_matrix, n_qubit):
                 enta[q].append(q+1)
    
     return single,enta
+
+def generate_single_enta(gate_matrix, n_qubits):
+ 
+    # Transfer gate_matrix into one-hot format
+    gate_matrix = gate_matrix.squeeze(0).cpu().detach().numpy()
+    one_hot_gate_matrix = np.zeros_like(gate_matrix, dtype=int)
+    max_indices = np.argmax(gate_matrix, axis=1)
+    one_hot_gate_matrix[np.arange(gate_matrix.shape[0]), max_indices] = 1
+ 
+    # Generate single and enta
+    single = [[i + 1] for i in range(n_qubits)]
+    enta = [[i + 1] for i in range(n_qubits)]
+    single_list_info = [[0, 0], [0, 1], [1, 0], [1, 1]]
+    for n in range(0, len(gate_matrix), n_qubits * 2):
+        qubit_info = one_hot_gate_matrix[n:n+n_qubits, :-n_qubits]
+        adj_info = one_hot_gate_matrix[n+n_qubits:n+2*n_qubits, -n_qubits:]
+        for q in range(n_qubits):
+            single_res = np.sum(qubit_info[q] * np.array((0, 1, 2, 3)))
+            single[q].extend(single_list_info[single_res])
+            try:
+                enta[q].append(int(np.squeeze(np.argwhere(adj_info[q])))+1)
+            except:
+                enta[q].append(q+1)
+ 
+    # Translate single to single op_results
+    single_op_results = {i: [] for i in range(n_qubits)}
+    for col_index in range(1, len(single[0]), 2):
+        for row_index in range(len(single)):
+            value1 = single[row_index][col_index]
+            value2 = single[row_index][col_index + 1]
+            combined = f"{value1}{value2}"
+            if combined == '00':
+                single_op_results[(col_index-1)/2].append(('Identity', row_index))
+            elif combined == '01':
+                single_op_results[(col_index-1)/2].append(('U3', row_index))
+            elif combined == '10':
+                single_op_results[(col_index-1)/2].append(('data', row_index))
+            elif combined == '11':
+                single_op_results[(col_index-1)/2].append(('data+U3', row_index))
+            else:
+                pass
+ 
+    # Translate enta to enta op_results
+    enta_op_results = {i: [] for i in range(len(enta[0]) - 1)}
+    for col_index in range(1, len(enta[0])):
+        for row_index in range(len(enta)):
+            control = row_index
+            target = enta[row_index][col_index] - 1
+            if control == target:
+                enta_op_results[col_index - 1].append(('Identity', target))
+            else:
+                if col_index - 1 in enta_op_results:
+                    enta_op_results[col_index - 1].append(('C(U3)', control, target))
+ 
+    # Combine single and enta op_results
+    op_results = []
+    for layer in range(int(one_hot_gate_matrix.shape[0]/(n_qubits * 2))):
+        op_results.extend(single_op_results[layer])
+        op_results.extend(enta_op_results[layer]) 
+ 
+    return single, enta, op_results
 
 def compute_sum(full_op, n_qubits):
     """
@@ -105,7 +170,7 @@ def get_proj_mask(x, N, P):
 def is_valid_ops_adj(full_op, n_qubits):
     full_op = full_op.squeeze(0).cpu()
     violation = compute_sum(full_op, n_qubits)
-    if violation >= 4:
+    if violation > 4:
         return False
     else:
         return True   

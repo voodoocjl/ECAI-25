@@ -233,7 +233,7 @@ class Node:
         net_str = random.choice(self.bag[0])
         type_ = type(eval(net_str)[-1])
         if type_ == list:
-            qubit = eval(net_str)[-1][0]
+            qubit = 100
         else:
             qubit = eval(net_str)[0]
         
@@ -241,7 +241,7 @@ class Node:
         while qubit in qubits:
             net_str = random.choice(list(self.bag.keys()))
             if type_ == list:
-                qubit = eval(net_str)[-1][0]
+                qubit = 100
             else:
                 qubit = eval(net_str)[0]
             i += 1
