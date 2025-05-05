@@ -77,7 +77,7 @@ class MCTS:
         self.qubit_used = []
         self.period = 1
         self.fold = fold
-        self.failure = 0
+        self.performance_per_gate = []
 
     def init_train(self, numbers=50):
         
@@ -445,7 +445,7 @@ class MCTS:
                     if n.is_leaf == True:
                         sampled_arch = n.sample_arch(qubits)
                         if sampled_arch is not None:
-                            print("\nselected node" + str(n.id-7) + " in leaf layer")                            
+                            # print("\nselected node" + str(n.id-7) + " in leaf layer")                            
                             self.TASK_QUEUE.append(sampled_arch)                                
                             self.sample_nodes.append(n.id-h)
                             break
@@ -505,6 +505,7 @@ class MCTS:
         return jobs, designs, archs, nodes
 
     def evaluate_jobs_after(self, results, jobs, archs, nodes):
+        performance_per_gate = []
         for i in range(len(jobs)):
             acc = results[i]
             job = jobs[i]  
@@ -514,25 +515,25 @@ class MCTS:
             
             # self.DISPATCHED_JOB[job_str] = acc
             if regular == True:
-                exploration, gate_numbers = count_gates(arch, self.explorations['regular'])                
-                print('Exploration:', acc / exploration)
-            
-            # p_acc = acc * (1 + 1/exploration)
-            p_acc = acc
+                penaly, gates = count_gates(arch, self.explorations['regular'])                
+                # print('Exploration:', acc / exploration)
+            else:
+                penaly == 0
+            n_gates = gates['uploading'] + gates['single'] + gates['enta']       
+            p_acc = acc - penaly
+            performance_per_gate.append(acc/n_gates)
             self.samples[arch_str] = p_acc
             self.samples_true[arch_str] = acc
             self.samples_compact[job_str] = p_acc
             sample_node = nodes[i]
+            print("job:", job_str, "acc:", acc, "p_acc:", p_acc)
             with open('results/{}.csv'.format(self.task), 'a+', newline='') as res:
                 writer = csv.writer(res)                                        
                 num_id = len(self.samples)
                 writer.writerow([num_id, job_str, sample_node, acc, p_acc])
             self.mae_list.append(acc)
-                        
-            # if job_str in dataset and self.explorations['iteration'] == 0:
-            #     report = {'mae': dataset.get(job_str)}
-            #     # print(report)
-            # self.explorations[job_str]   = ((abs(np.subtract(self.topology[job[0]], job))) % 2.4).round().sum()
+        self.performance_per_gate.append(np.mean(performance_per_gate))
+        print('Performance per gate:', np.mean(performance_per_gate))     
             
 
     def pre_search(self, iter):       
@@ -651,7 +652,7 @@ def count_gates(arch, coeff=None):
     stat['single'] = x[[3*i+1 for i in range(layers)]].sum()
     stat['enta'] = x[[3*i+2 for i in range(layers)]].sum()
 
-    y = stat['single'] + 2 * stat['enta']
+    y = coeff[0] * stat['single'] + coeff[1] * stat['uploading'] + coeff[2] * stat['enta']
 
     return y, stat
 
@@ -777,7 +778,7 @@ if __name__ == '__main__':
     agent = create_agent(task, arch_code, args_c.pretrain, saved)
     ITERATION = agent.ITERATION
     debug = False
-    regular = False
+    regular = True
      
 
     for iter in range(ITERATION, 50):
