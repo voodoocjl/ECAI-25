@@ -619,12 +619,10 @@ def create_agent(task, arch_code, pre_file, node=None):
                 
         if args.init_weight in init_weights:
             agent.weight = torch.load(os.path.join(init_weight_path, args.init_weight))
-        else:
-            if task != 'MOSI':
-                best_model, report = Scheme(design, task, 'init', 30, None, 'save')
-            else:
-                best_model, report = Scheme(design, task, 'init', 1)
+        else:            
+            best_model, report = Scheme(design, task, 'init', 30, None, 'save')            
             agent.weight = best_model.state_dict()
+            
             with open('results/{}_fine.csv'.format(task), 'a+', newline='') as res:
                 writer = csv.writer(res)
                 writer.writerow([0, [single, enta], report['mae']]) 
@@ -646,7 +644,8 @@ if __name__ == '__main__':
     args_c = parser.parse_args()
     task = args_c.task
     # task = 'MNIST-10'
-    task = 'MNIST'
+    # task = 'MNIST'
+    task = 'FASHION'
 
     mp.set_start_method('spawn')
 
@@ -674,7 +673,7 @@ if __name__ == '__main__':
     args = Arguments(task)
     agent = create_agent(task, arch_code, args_c.pretrain, saved)
     ITERATION = agent.ITERATION
-    debug = True
+    debug = False
      
 
     for iter in range(ITERATION, 50):
