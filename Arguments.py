@@ -28,6 +28,7 @@ class Arguments:
         self.fold        = 1
         self.init_weight = 'init_weight_'+ task +'_' + str(self.n_qubits)
         self.SNR = 1
+        self.strategy = 'implicit'
 
         if task == ('MNIST-10' or 'FASHION-10'):
             self.n_qubits   = 10 

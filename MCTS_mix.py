@@ -104,8 +104,7 @@ class MCTS:
         strategy = self.weight
         
         sorted_changes = [k for k, v in sorted(self.samples_compact.items(), key=lambda x: x[1], reverse=True)]
-        epochs = 20
-        samples = 10
+        epochs = 20        
         # pick best 2 and randomly choose one
         random.seed(self.ITERATION)
         
@@ -167,37 +166,45 @@ class MCTS:
         self.samples_compact = {}
         self.explorations['iteration'] += 1
         arch_last = single + enta
-        
-        # with open('search_space/search_space_mnist_4', 'rb') as file:
-        with open('search_space/search_space_mnist_single', 'rb') as file:
-            self.search_space = pickle.load(file)
-        # remove last configuration
-        for i in range(len(arch_last)):
-            try:
-                self.search_space.remove(arch_last[i])
-            except ValueError:
-                pass
-        self.search_space = [x for x in self.search_space if [x[0]] not in self.qubit_used]
-        self.init_train(samples)
 
-        # implicit search
+        samples = 20
+        if args.strategy == 'mix':
+            samples = 10
+            with open('search_space/search_space_mnist_single', 'rb') as file:
+                self.search_space = pickle.load(file)
+        elif args.strategy == 'explicit':
+            with open('search_space/search_space_mnist_4', 'rb') as file:       
+                self.search_space = pickle.load(file)
         
-        self.search_space = []
-        self.qubit_used = []
-        
-        
-        self.ROOT.base_code = None        
-        self.history = [[] for i in range(2)]
-        
-        self.weight = self.weight
-        # print(Color.BLUE + 'Implicit Switch' + Color.RESET)
+        if args.strategy in ['explicit', 'mix']:
+            # remove last configuration
+            for i in range(len(arch_last)):
+                try:
+                    self.search_space.remove(arch_last[i])
+                except ValueError:
+                    pass
+            self.search_space = [x for x in self.search_space if [x[0]] not in self.qubit_used]        
+            self.init_train(samples)
 
-        arch_next = self.Langevin_update(best_arch, args.SNR)
-        # imp_arch_list = self.projection(arch_next, single, enta)
-        for arch in arch_next:
-            self.search_space.append(arch)        
+        if args.strategy in ['implicit', 'mix']:    
+            # implicit search
+            
+            self.search_space = []
+            self.qubit_used = []
+            
+            
+            self.ROOT.base_code = None        
+            self.history = [[] for i in range(2)]
+            
+            self.weight = self.weight
+            # print(Color.BLUE + 'Implicit Switch' + Color.RESET)
 
-        self.init_train(samples)        
+            arch_next = self.Langevin_update(best_arch, args.SNR)
+            # imp_arch_list = self.projection(arch_next, single, enta)
+            for arch in arch_next:
+                self.search_space.append(arch)        
+
+            self.init_train(samples)        
         # self.qubit_used = qubits
 
     def get_grad(self, x):
