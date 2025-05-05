@@ -522,7 +522,7 @@ def Scheme_mp(design, job, task, weight, i, q=None):
         if get_list_dimensions(job[0]) < 3:
             epoch = 1
         else:
-            epoch = 6
+            epoch = 2
     else:
         from schemes_mosi import Scheme
         epoch = 3
@@ -622,7 +622,7 @@ def create_agent(task, arch_code, pre_file, node=None):
         else:            
             best_model, report = Scheme(design, task, 'init', 30, None, 'save')            
             agent.weight = best_model.state_dict()
-            
+
             with open('results/{}_fine.csv'.format(task), 'a+', newline='') as res:
                 writer = csv.writer(res)
                 writer.writerow([0, [single, enta], report['mae']]) 
