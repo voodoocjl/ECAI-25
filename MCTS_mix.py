@@ -70,7 +70,7 @@ class MCTS:
         self.CURT = self.ROOT
         self.weight = 'init'
         self.best_model_weight = None
-        self.explorations = {'phase': 0, 'iteration': 0, 'single':None, 'enta': None, 'rate': [0.001, 0.002, 0.002], 'rate_decay': [0.006, 0.004, 0.002, 0]}
+        self.explorations = {'phase': 0, 'iteration': 0, 'single':None, 'enta': None, 'regular': [0.001, 0.002, 0.002]}
         self.best = {'acc': 0, 'model':[]}
         self.task = ''
         self.history = [[] for i in range(2)]
@@ -168,7 +168,8 @@ class MCTS:
         self.explorations['iteration'] += 1
         arch_last = single + enta
         
-        with open('search_space/search_space_mnist_4', 'rb') as file:
+        # with open('search_space/search_space_mnist_4', 'rb') as file:
+        with open('search_space/search_space_mnist_single', 'rb') as file:
             self.search_space = pickle.load(file)
         # remove last configuration
         for i in range(len(arch_last)):
@@ -191,7 +192,7 @@ class MCTS:
         self.weight = self.weight
         # print(Color.BLUE + 'Implicit Switch' + Color.RESET)
 
-        arch_next = self.Langevin_update(best_arch, snr=10)
+        arch_next = self.Langevin_update(best_arch, args.SNR)
         # imp_arch_list = self.projection(arch_next, single, enta)
         for arch in arch_next:
             self.search_space.append(arch)        
@@ -219,24 +220,127 @@ class MCTS:
         loss = loss_fn(outputs[0], y.long())
         loss.backward(retain_graph=True)
         return x, x.grad
+    
+    def compute_scaling_factor(self, x, decoder, snr_target, d):
+        """
+        Compute the scaling factor c based on the given formula.
+        
+        Args:
+            x (torch.Tensor): Input tensor.
+            decoder (nn.Module): Decoder model.
+            snr_target (float): Target signal-to-noise ratio.
+            d (int): Dimensionality of the input.
 
+        Returns:
+            float: Scaling factor c.
+        """
+        # Step 1: Compute y = decoder(x)
+        x.requires_grad_(True)  # Enable gradient computation for x
+        y = decoder(x)
+        y = y[0]
+        # Step 2: Compute ||y||^2 (mean squared norm of y)
+        y_norm_squared = torch.mean(torch.norm(y, dim=-1) ** 2)
+        
+        # Step 3: Compute Jacobian J of the decoder
+        J = []
+        for i in range(y.shape[2]):  # Iterate over output dimensions
+            grad_outputs = torch.zeros_like(y)
+            grad_outputs[:, i] = 1.0  # One-hot vector for each output dimension
+            J_i = torch.autograd.grad(y, x, grad_outputs=grad_outputs, retain_graph=True, create_graph=True)[0]
+            J.append(J_i)
+        J = torch.stack(J, dim=1)  # Stack Jacobian components
+        
+        # Step 4: Compute ||J||_2^2 (Frobenius norm squared of the Jacobian)
+        J_norm_squared = torch.sum(J ** 2)
+        
+        # Step 5: Compute scaling factor c
+        x_norm = torch.norm(x.reshape(x.shape[0], -1), dim=-1).mean()
+        c = torch.sqrt(y_norm_squared / (snr_target * d * J_norm_squared)) * (x_norm / torch.sqrt(torch.tensor(d, dtype=torch.float32)))
+        
+        return c.item()
+    
+    # def compute_scaling_factor(self, x, decoder, snr_target, d):
+    #     """
+    #     Compute the scaling factor c based on the given formula.
+        
+    #     Args:
+    #         x (torch.Tensor): Input tensor.
+    #         decoder (nn.Module): Decoder model.
+    #         snr_target (float): Target signal-to-noise ratio.
+    #         d (int): Dimensionality of the input.
+
+    #     Returns:
+    #         float: Scaling factor c.
+    #     """
+    #     # Step 1: Compute y = decoder(x)
+    #     x.requires_grad_(True)  # Enable gradient computation for x
+    #     y = decoder(x)
+    #     y = y[0]
+
+    #     # Step 2: Compute E[y] (mean of y)
+    #     y_mean = torch.mean(y)  # Compute the mean of y
+
+    #     # Step 3: Compute Jacobian J of the decoder
+    #     J = []
+    #     for i in range(y.shape[2]):  # Iterate over output dimensions
+    #         grad_outputs = torch.zeros_like(y)
+    #         grad_outputs[:, i] = 1.0  # One-hot vector for each output dimension
+    #         J_i = torch.autograd.grad(y, x, grad_outputs=grad_outputs, retain_graph=True, create_graph=True)[0]
+    #         J.append(J_i)
+    #     J = torch.stack(J, dim=1)  # Stack Jacobian components
+
+    #     # Step 4: Compute ||J||_F (Frobenius norm of the Jacobian)
+    #     J_norm_frobenius = torch.sqrt(torch.sum(J ** 2))  # Frobenius norm
+
+    #     # Step 5: Compute scaling factor c
+    #     c = y_mean / (snr_target * J_norm_frobenius * torch.sqrt(torch.tensor(d, dtype=torch.float32)))
+
+    #     return c.item()
+
+    # def Langevin_update(self, x, snr=10, n_steps=20, step_size=0.01):
+        
+    #     x = self.ROOT.classifier.arch_to_z([x])
+    #     x_norm = torch.norm(x.reshape(x.shape[0], -1), dim=-1).mean()
+    #     x_valid_list = []
+    #     for i in range(1000):            
+    #         noise = torch.randn_like(x)            
+    #         noise_norm = torch.norm(noise.reshape(noise.shape[0], -1), dim=-1).mean()
+    #         step_size = (x_norm / noise_norm) / snr
+    #         x_new = x + step_size * noise
+    #         x_new = self.ROOT.classifier.GVAE_model.decoder(x_new)
+    #         mask = get_proj_mask(x_new[0], arch_code[0], arch_code[0])
+    #         if is_valid_ops_adj(x_new[0], int(arch_code[0]/self.fold)):
+    #             gate_matrix = x_new[0] + mask
+    #             single,enta, _ = generate_single_enta(gate_matrix, int(args.n_qubits/args.fold))
+    #             if [single, enta] not in x_valid_list:
+    #                 x_valid_list.append([single, enta])
+    #     return x_valid_list
+    
     def Langevin_update(self, x, snr=10, n_steps=20, step_size=0.01):
         
-        x = self.ROOT.classifier.arch_to_z([x])
-        x_norm = torch.norm(x.reshape(x.shape[0], -1), dim=-1).mean()
+        x = self.ROOT.classifier.arch_to_z([x])        
         x_valid_list = []
-        for i in range(1000):            
-            noise = torch.randn_like(x)            
-            noise_norm = torch.norm(noise.reshape(noise.shape[0], -1), dim=-1).mean()
-            step_size = (x_norm / noise_norm) / snr
+
+        # Compute scaling factor c
+        decoder = self.ROOT.classifier.GVAE_model.decoder
+        d = x.shape[2]  # Dimensionality
+        c = self.compute_scaling_factor(x, decoder, snr, d)        # c = 1
+        
+        # x_norm_per_sample = torch.norm(x, dim=2, keepdim=True)
+
+        for i in range(1000):
+            noise = torch.randn_like(x)
+            step_size = c
             x_new = x + step_size * noise
-            x_new = self.ROOT.classifier.GVAE_model.decoder(x_new)
+            # x_new = noise * x
+            x_new = decoder(x_new)
             mask = get_proj_mask(x_new[0], arch_code[0], arch_code[0])
             if is_valid_ops_adj(x_new[0], int(arch_code[0]/self.fold)):
                 gate_matrix = x_new[0] + mask
                 single,enta, _ = generate_single_enta(gate_matrix, int(args.n_qubits/args.fold))
                 if [single, enta] not in x_valid_list:
                     x_valid_list.append([single, enta])
+        print('Number of valid ciruicts:', len(x_valid_list))
         return x_valid_list
 
     def dump_all_states(self, num_samples):
@@ -409,10 +513,9 @@ class MCTS:
             arch_str = json.dumps(np.int8(arch).tolist())
             
             # self.DISPATCHED_JOB[job_str] = acc
-            # if self.task != 'MOSI':
-            #     exploration, gate_numbers = count_gates(arch, self.explorations['rate'])
-            #     print('arch:', job_str)
-            #     print('Exploration:', acc / exploration)
+            if regular == True:
+                exploration, gate_numbers = count_gates(arch, self.explorations['regular'])                
+                print('Exploration:', acc / exploration)
             
             # p_acc = acc * (1 + 1/exploration)
             p_acc = acc
@@ -674,6 +777,7 @@ if __name__ == '__main__':
     agent = create_agent(task, arch_code, args_c.pretrain, saved)
     ITERATION = agent.ITERATION
     debug = False
+    regular = False
      
 
     for iter in range(ITERATION, 50):
