@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import time
 from sklearn.metrics import accuracy_score, f1_score
-from datasets import MNISTDataLoaders, MOSIDataLoaders
+from datasets import MNISTDataLoaders, MOSIDataLoaders, qml_Dataloaders
 from FusionModel import QNet
 from FusionModel import translator
 
@@ -38,7 +38,7 @@ def train(model, data_loader, optimizer, criterion, args):
         images = feed_dict['image'].to(args.device)
         targets = feed_dict['digit'].to(args.device)    
         optimizer.zero_grad()
-        output = model(images)
+        output = model(images, args.n_qubits)
         loss = criterion(output, targets)        
         loss.backward()
         optimizer.step()
@@ -52,7 +52,7 @@ def test(model, data_loader, criterion, args):
         for feed_dict in data_loader:
             images = feed_dict['image'].to(args.device)
             targets = feed_dict['digit'].to(args.device)        
-            output = model(images)
+            output = model(images, args.n_qubits)
             instant_loss = criterion(output, targets).item()
             total_loss += instant_loss
             target_all = torch.cat((target_all, targets), dim=0)
@@ -75,7 +75,7 @@ def evaluate(model, data_loader, args):
         for feed_dict in data_loader:
             images = feed_dict['image'].to(args.device)
             targets = feed_dict['digit'].to(args.device)        
-            output = model(images)
+            output = model(images, args.n_qubits)
 
     _, indices = output.topk(1, dim=1)
     masks = indices.eq(targets.view(-1, 1).expand_as(indices))
@@ -88,12 +88,12 @@ def evaluate(model, data_loader, args):
 
 def Scheme_eval(design, task, weight):
     result = {}  
-    args = Arguments(task) 
+    args = Arguments(**task) 
     path = 'weights/'  
-    if task == 'MOSI':
-        dataloader = MOSIDataLoaders(args)
+    if task['task'] == 'QML':
+        dataloader = qml_Dataloaders(args)
     else:
-        dataloader = MNISTDataLoaders(args, task)
+        dataloader = MNISTDataLoaders(args, task['task'])
    
     train_loader, val_loader, test_loader = dataloader
     model = QNet(args, design).to(args.device)
@@ -107,14 +107,14 @@ def Scheme(design, task, weight='base', epochs=None, verbs=None, save=None):
     np.random.seed(seed)
     torch.random.manual_seed(seed)
 
-    args = Arguments(task)
+    args = Arguments(**task)
     if epochs == None:
         epochs = args.epochs
     
-    if task == 'MOSI':
-        dataloader = MOSIDataLoaders(args)
+    if task['task'] == 'QML':
+        dataloader = qml_Dataloaders(args)
     else:
-        dataloader = MNISTDataLoaders(args, task)
+        dataloader = MNISTDataLoaders(args, task['task'])
    
     train_loader, val_loader, test_loader = dataloader
     model = QNet(args, design).to(args.device)
@@ -123,7 +123,7 @@ def Scheme(design, task, weight='base', epochs=None, verbs=None, save=None):
             model.load_state_dict(weight, strict= False)
         else:            
             model.load_state_dict(torch.load('init_weights/base_fashion'))
-    criterion = nn.NLLLoss()   
+    criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.QuantumLayer.parameters(), lr=args.qlr)
     train_loss_list, val_loss_list = [], []
     best_val_loss = 0
@@ -160,13 +160,12 @@ def Scheme(design, task, weight='base', epochs=None, verbs=None, save=None):
 
 def pretrain(design, task, weight):    
 
-    args = Arguments(task)
+    args = Arguments(**task)
     
-    if task == 'MOSI':
-        dataloader = MOSIDataLoaders(args)
+    if task['task'] == 'QML':
+        dataloader = qml_Dataloaders(args)
     else:
-        dataloader = MNISTDataLoaders(args, task)
-   
+        dataloader = MNISTDataLoaders(args, task['task'])   
     train_loader, val_loader, test_loader = dataloader
     model = QNet(args, design).to(args.device)
     model.load_state_dict(weight, strict= True)

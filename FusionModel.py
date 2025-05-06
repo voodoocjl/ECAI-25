@@ -5,7 +5,6 @@ import torchquantum.functional as tqf
 from math import pi
 import torch.nn.functional as F
 from torchquantum.encoding import encoder_op_list_name_dict
-from Arguments import Arguments
 import numpy as np
 
 def gen_arch(change_code, base_code):        # start from 1, not 0
@@ -171,16 +170,18 @@ class TQLayer(tq.QuantumModule):
         ]
         return input
 
-    def forward(self, x):
+    def forward(self, x, n_qubits=4):
         bsz = x.shape[0]
-        kernel_size = self.args.kernel
-        x = F.avg_pool2d(x, kernel_size)  # 'down_sample_kernel_size' = 6
-        if kernel_size == 4:
-            x = x.view(bsz, 6, 6)        
-            tmp = torch.cat((x.view(bsz, -1), torch.zeros(bsz, 4)), dim=-1)
-            x = tmp.reshape(bsz, -1, 10).transpose(1,2)
-        else:
-            x = x.view(bsz, 4, 4).transpose(1,2)
+        # kernel_size = self.args.kernel
+        # x = F.avg_pool2d(x, kernel_size)  # 'down_sample_kernel_size' = 6
+        # if kernel_size == 4:
+        #     x = x.view(bsz, 6, 6)
+        #     tmp = torch.cat((x.view(bsz, -1), torch.zeros(bsz, 4)), dim=-1)
+        #     x = tmp.reshape(bsz, -1, 10).transpose(1,2)
+        # else:
+        #     x = x.view(bsz, 4, 4).transpose(1,2)
+
+        x = x.view(bsz, n_qubits, -1)
 
         qdev = tq.QuantumDevice(n_wires=self.n_wires, bsz=bsz, device=x.device)
 
@@ -198,7 +199,11 @@ class TQLayer(tq.QuantumModule):
             for j in range(self.n_wires):
                 if self.design['enta' + str(layer) + str(j)][1][0] != self.design['enta' + str(layer) + str(j)][1][1]:
                     self.entas[j + layer * self.n_wires](qdev, wires=self.design['enta' + str(layer) + str(j)][1])
-        return self.measure(qdev)
+
+        out = self.measure(qdev)
+        out = out[:, :2]    # only take the first two measurements for binary classification
+
+        return out
 
 
 class QNet(nn.Module):
@@ -208,7 +213,7 @@ class QNet(nn.Module):
         self.design = design
         self.QuantumLayer = TQLayer(self.args, self.design)
 
-    def forward(self, x_image):
-        exp_val = self.QuantumLayer(x_image)
+    def forward(self, x_image, n_qubits=4):
+        exp_val = self.QuantumLayer(x_image, n_qubits)
         output = F.log_softmax(exp_val, dim=1)        
         return output
