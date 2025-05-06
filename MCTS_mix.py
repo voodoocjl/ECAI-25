@@ -645,7 +645,7 @@ def create_agent(task, arch_code, pre_file, node=None):
                 search_space = pickle.load(file)
 
         agent = MCTS(search_space, 4, args.fold, arch_code)
-        agent.task_name = task['task']
+        agent.task_name = task['task']+'_'+task['option']
 
         if pre_file in init_weights:
             agent.nodes[0].classifier.model.load_state_dict(torch.load(os.path.join(init_weight_path, pre_file)), strict= True)
@@ -668,7 +668,7 @@ def create_agent(task, arch_code, pre_file, node=None):
             best_model, report = Scheme(design, task, 'init', 30, None, 'save')            
             agent.weight = best_model.state_dict()
 
-            with open('results/{}_fine.csv'.format(task['task']), 'a+', newline='') as res:
+            with open('results/{}_fine.csv'.format(task['task']+'_'+task['option']), 'a+', newline='') as res:
                 writer = csv.writer(res)
                 writer.writerow([0, [single, enta], report['mae']]) 
         
@@ -688,19 +688,17 @@ if __name__ == '__main__':
 
     args_c = parser.parse_args()
     # task = args_c.task
-    # task = 'MNIST-10'
-    # task = 'MNIST'
-    # task = 'FASHION'
-    task = {
-    'task': 'QML_Linear_32d_mix_reg',
-    'n_qubits': 8,
-    'n_layers': 4,
-    'fold': 2
-    }
+    
+    # task = {
+    # 'task': 'QML_Linear_32d_mix_reg',
+    # 'n_qubits': 8,
+    # 'n_layers': 4,
+    # 'fold': 2
+    # }
 
     task = {
     'task': 'MNIST_4',
-    'option': 'mix_reg',
+    'option': 'implicit_reg',
     'n_qubits': 4,
     'n_layers': 4,
     'fold': 1
@@ -712,7 +710,7 @@ if __name__ == '__main__':
     # saved = 'states/mcts_agent_20'
     num_processes = 2             
     
-    check_file(task['task'])
+    check_file(task['task']+'_'+task['option'])
     
     arch_code = [task['n_qubits'], task['n_layers']]
     args = Arguments(**task)
