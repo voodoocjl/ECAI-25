@@ -133,7 +133,7 @@ class Classifier:
 
     def train(self):
         
-        self.epochs = 1000
+        self.epochs = 200
         
         # in a rare case, one branch has no networks
         if len(self.nets) == 0:

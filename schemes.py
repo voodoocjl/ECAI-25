@@ -90,7 +90,7 @@ def Scheme_eval(design, task, weight):
     result = {}  
     args = Arguments(**task) 
     path = 'weights/'  
-    if task['task'] == 'QML':
+    if task['task'].startswith('QML'):
         dataloader = qml_Dataloaders(args)
     else:
         dataloader = MNISTDataLoaders(args, task['task'])
@@ -111,7 +111,7 @@ def Scheme(design, task, weight='base', epochs=None, verbs=None, save=None):
     if epochs == None:
         epochs = args.epochs
     
-    if task['task'] == 'QML':
+    if task['task'].startswith('QML'):
         dataloader = qml_Dataloaders(args)
     else:
         dataloader = MNISTDataLoaders(args, task['task'])
@@ -162,7 +162,7 @@ def pretrain(design, task, weight):
 
     args = Arguments(**task)
     
-    if task['task'] == 'QML':
+    if task['task'].startswith('QML'):
         dataloader = qml_Dataloaders(args)
     else:
         dataloader = MNISTDataLoaders(args, task['task'])   

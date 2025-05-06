@@ -10,9 +10,9 @@ from torch.utils.data.sampler import SequentialSampler, RandomSampler
 
 # Dataloaders= lambda args: myminist_cg(args, 3,5,8)
 # Dataloaders = lambda args: myBarsAndStripes(args, 4)
-qml_Dataloaders = lambda args: myhidden_manifold(args,6,16)
+# qml_Dataloaders = lambda args: myhidden_manifold(args,6,16)
 # Dataloaders = lambda args: myhyperplanes(args, 3, 10)
-# qml_Dataloaders = lambda args: mylinearly_separable(args, 32)
+qml_Dataloaders = lambda args: mylinearly_separable(args, 32)
 # Dataloaders = lambda args: mytwo_curves(args, 20)
 
 

@@ -157,7 +157,7 @@ class MCTS:
             metrics = report['mae']
             if not explicit:
                 best_change_full = best_change
-            writer.writerow([self.ITERATION, best_change_full, metrics])
+            writer.writerow([self.ITERATION, best_change_full, metrics, self.performance_per_gate[-1]])
         
         if qubits != []:
             self.history.append(qubits)
@@ -466,14 +466,13 @@ class MCTS:
             arch = archs[i]
             arch_str = json.dumps(np.int8(arch).tolist())
             
-            # self.DISPATCHED_JOB[job_str] = acc
+            penaly, gates = count_gates(arch, self.explorations['regular'])
+            n_gates = gates['uploading'] + gates['single'] + gates['enta'] 
             if regular == True:
-                penaly, gates = count_gates(arch, self.explorations['regular'])                
-                # print('Exploration:', acc / exploration)
+                p_acc = acc - penaly
             else:
-                penaly == 0
-            n_gates = gates['uploading'] + gates['single'] + gates['enta']       
-            p_acc = acc - penaly
+                p_acc = acc                  
+            
             performance_per_gate.append(acc/n_gates)
             self.samples[arch_str] = p_acc
             self.samples_true[arch_str] = acc
@@ -688,15 +687,15 @@ if __name__ == '__main__':
     parser.add_argument('-pretrain', type=str, required=False, default='no_pretrain', help='filename of pretraining weights, e.g. pre_weights')
 
     args_c = parser.parse_args()
-    task = args_c.task
+    # task = args_c.task
     # task = 'MNIST-10'
     # task = 'MNIST'
     # task = 'FASHION'
     task = {
-    'task': 'QML',
-    'n_qubits': 4,
+    'task': 'QML_Linear_32d_mix_reg',
+    'n_qubits': 8,
     'n_layers': 4,
-    'fold': 1
+    'fold': 2
     }
 
     mp.set_start_method('spawn')
@@ -713,6 +712,7 @@ if __name__ == '__main__':
     ITERATION = agent.ITERATION
     debug = False
     regular = True
+
 
     for iter in range(ITERATION, 30):
         jobs, designs, archs, nodes = agent.pre_search(iter)
@@ -745,4 +745,4 @@ if __name__ == '__main__':
     print('<{}:'.format(Range[0]), sum(value < Range[0] for value in list(agent.samples_true.values())))
     print('({}, {}):'.format(Range[0], Range[1]), sum((value in Range)  for value in list(agent.samples_true.values())))
     print('>{}:'.format(Range[1]), sum(value > Range[1]  for value in list(agent.samples_true.values())))
-    print('Gate numbers of top {}: {}'.format(rank, analysis_result(agent.samples_true, rank)))
+    # print('Gate numbers of top {}: {}'.format(rank, analysis_result(agent.samples_true, rank)))
