@@ -74,7 +74,7 @@ from torchquantum.dataset import MNIST
 
 
 def MNISTDataLoaders(args, task):
-    if task in ('MNIST', 'MNIST-10'):
+    if task in ('MNIST_4', 'MNIST_10'):
         FAHION = False
     else:
         FAHION = True
