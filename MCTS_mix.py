@@ -698,6 +698,14 @@ if __name__ == '__main__':
     'fold': 2
     }
 
+    task = {
+    'task': 'MNIST_4',
+    'option': 'mix_reg',
+    'n_qubits': 4,
+    'n_layers': 4,
+    'fold': 1
+    }
+
     mp.set_start_method('spawn')
 
     saved = None

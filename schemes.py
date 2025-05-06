@@ -38,7 +38,7 @@ def train(model, data_loader, optimizer, criterion, args):
         images = feed_dict['image'].to(args.device)
         targets = feed_dict['digit'].to(args.device)    
         optimizer.zero_grad()
-        output = model(images, args.n_qubits)
+        output = model(images, args.n_qubits, args.task)
         loss = criterion(output, targets)        
         loss.backward()
         optimizer.step()
@@ -52,7 +52,7 @@ def test(model, data_loader, criterion, args):
         for feed_dict in data_loader:
             images = feed_dict['image'].to(args.device)
             targets = feed_dict['digit'].to(args.device)        
-            output = model(images, args.n_qubits)
+            output = model(images, args.n_qubits, args.task)
             instant_loss = criterion(output, targets).item()
             total_loss += instant_loss
             target_all = torch.cat((target_all, targets), dim=0)
@@ -75,7 +75,7 @@ def evaluate(model, data_loader, args):
         for feed_dict in data_loader:
             images = feed_dict['image'].to(args.device)
             targets = feed_dict['digit'].to(args.device)        
-            output = model(images, args.n_qubits)
+            output = model(images, args.n_qubits, args.task)
 
     _, indices = output.topk(1, dim=1)
     masks = indices.eq(targets.view(-1, 1).expand_as(indices))

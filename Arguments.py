@@ -12,9 +12,8 @@ class Arguments:
 
         self.allowed_gates = ['Identity', 'U3', 'data', 'data+U3'] #['Identity', 'RX', 'RY', 'RZ']
         
-        
-        self.n_qubits   = n_qubits         
-        
+        self.task      = task
+        self.n_qubits   = n_qubits        
         self.epochs     = 1
         self.batch_size = 256        
         self.sampling = 5
@@ -31,7 +30,7 @@ class Arguments:
         self.file_enta   = 'search_space/search_space_mnist_enta'
         self.kernel      = 6
         self.fold        = fold
-        self.init_weight = 'init_weight_'+ task +'_' + str(self.n_qubits)
+        self.init_weight = 'init_weight_'+ task
         self.SNR = 1
         self.strategy = 'mix'
 
