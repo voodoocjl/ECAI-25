@@ -81,47 +81,93 @@ def get_wires(op):
         return [op[1]]    
 
 
-def get_gate_and_adj_matrix(circuit_list, arch_code):
+# def get_gate_and_adj_matrix(circuit_list, arch_code):
         
+#         n_qubits = arch_code[0]
+#         gate_matrix = []
+#         op_list = []
+#         cl = list(circuit_list).copy()
+        
+#         gate_dict = encode_gate_type()
+        
+#         for i in range(4):
+#             cu3gate=[[0 for j in range(8)] for i in range(4)]
+        
+#             for op in circuit_list[i*8:i*8+4]:
+#                 op_qubits = [0] * n_qubits
+#                 op_vector = gate_dict[op[0]].tolist() + op_qubits
+#                 gate_matrix.append(op_vector)
+
+#             for op in circuit_list[i*8+4:i*8+8]:
+#                 op_wires = get_wires(op)
+#                 if len(op_wires) > 1:
+#                     i,j=op_wires
+#                     cu3gate[i][j+4]=1
+#             gate_matrix.extend(cu3gate)
+
+#         op_list=circuit_list        
+#         op_len = len(op_list)
+#         adj_matrix = np.zeros((op_len, op_len), dtype=float)
+        
+
+#         for index, op in enumerate(circuit_list):
+#             op_wires = get_wires(op)
+#             if index % 8 <= 3 or (index % 8 >= 4 and len(op_wires) > 1):
+#                 for wire_idx, wire in enumerate(op_wires):
+#                     for other_index, other_op in enumerate(circuit_list[index + 1:]):
+#                         other_index = index + 1 + other_index
+#                         other_wires = get_wires(other_op)
+#                         if other_index % 8 <= 3 or (other_index % 8 >= 4 and len(other_wires) > 1):
+#                             if wire in other_wires:
+#                                 # 根据 wire 在 op_wires 中的位置设置值
+#                                 adj_matrix[index, other_index] = (wire_idx + 1) / 2  # 第0位 -> 1，第1位 -> 2
+#                                 break
+#         pass
+
+#         return cl, gate_matrix, adj_matrix
+
+def get_gate_and_adj_matrix(circuit_list, arch_code):
+
         n_qubits = arch_code[0]
+        n_layers = arch_code[1]
+        interval = 2 * n_qubits
         gate_matrix = []
         op_list = []
         cl = list(circuit_list).copy()
         
         gate_dict = encode_gate_type()
+        single_gate_type = len(gate_dict)
         
-        for i in range(4):
-            cu3gate=[[0 for j in range(8)] for i in range(4)]
-        
-            for op in circuit_list[i*8:i*8+4]:
+        for i in range(n_layers):
+            cu3gate=[[0 for j in range(single_gate_type+n_qubits)] for i in range(n_qubits)]
+        # op_list.append('START')
+            for op in circuit_list[i*interval:i*interval+n_qubits]:
                 op_qubits = [0] * n_qubits
                 op_vector = gate_dict[op[0]].tolist() + op_qubits
                 gate_matrix.append(op_vector)
 
-            for op in circuit_list[i*8+4:i*8+8]:
+            for op in circuit_list[i*interval+n_qubits:(i+1)*interval]:
                 op_wires = get_wires(op)
                 if len(op_wires) > 1:
                     i,j=op_wires
-                    cu3gate[i][j+4]=1
+                    cu3gate[i][j+single_gate_type]=1
             gate_matrix.extend(cu3gate)
-
-        op_list=circuit_list        
-        op_len = len(op_list)
+               
+        op_len = len(circuit_list)
         adj_matrix = np.zeros((op_len, op_len), dtype=float)
         
-
         for index, op in enumerate(circuit_list):
             op_wires = get_wires(op)
-            if index % 8 <= 3 or (index % 8 >= 4 and len(op_wires) > 1):
+            if not (index % interval >= n_qubits and len(op_wires) == 1):
                 for wire_idx, wire in enumerate(op_wires):
                     for other_index, other_op in enumerate(circuit_list[index + 1:]):
                         other_index = index + 1 + other_index
                         other_wires = get_wires(other_op)
-                        if other_index % 8 <= 3 or (other_index % 8 >= 4 and len(other_wires) > 1):
+                        if not (other_index % interval >= n_qubits and len(other_wires) == 1):
                             if wire in other_wires:
                                 # 根据 wire 在 op_wires 中的位置设置值
                                 adj_matrix[index, other_index] = (wire_idx + 1) / 2  # 第0位 -> 1，第1位 -> 2
                                 break
-        pass
+        pass       
 
         return cl, gate_matrix, adj_matrix

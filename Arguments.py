@@ -35,7 +35,7 @@ class Arguments:
         self.strategy = 'mix'
 
 
-        if task == ('MNIST-10' or 'FASHION-10'):
+        if task == ('MNIST_10' or 'FASHION_10'):
             self.n_qubits   = n_qubits
             
             self.epochs     = 1
@@ -52,5 +52,5 @@ class Arguments:
             self.file_single = 'search_space/search_space_mnist_half_single'
             self.file_enta   = 'search_space/search_space_mnist_half_enta'
             self.fold        = fold
-            self.init_weight = 'init_weight_MNIST_10'
+            self.init_weight = 'init_weight_' + task
             

@@ -698,10 +698,20 @@ if __name__ == '__main__':
 
     task = {
     'task': 'MNIST_4',
-    'option': 'implicit_reg',
+    'option': 'mix_no_reg',
+    'regular': False,
     'n_qubits': 4,
     'n_layers': 4,
     'fold': 1
+    }
+
+    task = {
+    'task': 'MNIST_10',
+    'option': 'mix_reg',
+    'regular': True,
+    'n_qubits': 10,
+    'n_layers': 4,
+    'fold': 2
     }
 
     mp.set_start_method('spawn')
@@ -717,10 +727,10 @@ if __name__ == '__main__':
     agent = create_agent(task, arch_code, args_c.pretrain, saved)
     ITERATION = agent.ITERATION
     debug = False
-    regular = True
+    regular = task.get('regular', False)
 
 
-    for iter in range(ITERATION, 30):
+    for iter in range(ITERATION, 50):
         jobs, designs, archs, nodes = agent.pre_search(iter)
         results = {}
         n_jobs = len(jobs)
