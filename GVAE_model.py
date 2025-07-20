@@ -151,12 +151,15 @@ def compute_sum(full_op, n_qubits):
 
     return total_sum
 
-def get_proj_mask(x, N, P):      
+def get_proj_mask(x, N, P):    
     x = x.squeeze(0)
     mask = torch.zeros_like(x)
     num_rows, M = x.shape
 
     # 遍历每个块
+    # If the block index is odd, it sets the last P columns of the block to -100 in the mask.
+    # If the block index is even, it sets the first M-P columns of the block to -100.
+
     for i in range(0, num_rows, N):        
         idx = i // N + 1  # 当前块的序号（从 1 开始）
 

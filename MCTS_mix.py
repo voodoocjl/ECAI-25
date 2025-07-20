@@ -4,6 +4,7 @@ import random
 import json
 import csv
 import numpy as np
+from sympy import true
 import torch
 from Node import Node, Color
 
@@ -172,7 +173,7 @@ class MCTS:
         samples = 20
         if args.strategy == 'mix':
             samples = 10
-            with open('search_space/search_space_mnist_single', 'rb') as file:
+            with open(os.path.join('search_space', 'search_space_mnist_10'), 'rb') as file:
                 self.search_space = pickle.load(file)
         elif args.strategy == 'explicit':
             with open('search_space/search_space_mnist_4', 'rb') as file:       
@@ -198,7 +199,6 @@ class MCTS:
             self.ROOT.base_code = None        
             self.history = [[] for i in range(2)]
             
-            self.weight = self.weight
             # print(Color.BLUE + 'Implicit Switch' + Color.RESET)
 
             arch_next = self.Langevin_update(best_arch, args.SNR)
@@ -278,6 +278,7 @@ class MCTS:
         decoder = self.ROOT.classifier.GVAE_model.decoder
         d = x.shape[2]  # Dimensionality
         c = self.compute_scaling_factor(x, decoder, snr, d)
+        n_qubit = self.ARCH_CODE[0] // self.fold
         
         # x_norm_per_sample = torch.norm(x, dim=2, keepdim=True)
 
@@ -287,10 +288,10 @@ class MCTS:
             x_new = x + step_size * noise
             # x_new = noise * x
             x_new = decoder(x_new)
-            mask = get_proj_mask(x_new[0], arch_code[0], arch_code[0])
-            if is_valid_ops_adj(x_new[0], int(arch_code[0]/self.fold)):
+            mask = get_proj_mask(x_new[0], n_qubit, n_qubit)
+            if is_valid_ops_adj(x_new[0], n_qubit):
                 gate_matrix = x_new[0] + mask
-                single,enta, _ = generate_single_enta(gate_matrix, int(args.n_qubits/args.fold))
+                single,enta, _ = generate_single_enta(gate_matrix, n_qubit)
                 if [single, enta] not in x_valid_list:
                     x_valid_list.append([single, enta])
         print('Number of valid ciruicts:', len(x_valid_list))
@@ -640,7 +641,7 @@ def create_agent(task, arch_code, pre_file, node=None):
         n_qubits = int(arch_code[0] / args.fold)
         n_layers = arch_code[1]
         
-        if task['task'] == 'MNIST-10':
+        if task['task'] == 'MNIST_10':
             with open('search_space/search_space_mnist_10', 'rb') as file:
                 search_space = pickle.load(file)
 
