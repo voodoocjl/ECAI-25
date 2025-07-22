@@ -31,13 +31,14 @@ def evaluate_langevin_neighborhood(agent, arch, snr_values, task):
     results = {}
     weight = torch.load('init_weights/init_weight_MNIST_10')
     for snr in snr_values:
-        arch = cir_to_matrix(arch[0], arch[1], arch_code, args.fold)
-        arch_next = agent.Langevin_update(arch, snr)
+        Arch = cir_to_matrix(arch[0], arch[1], arch_code, args.fold)
+        arch_next = agent.Langevin_update(Arch, snr)
         performances = []
-        for single, enta in arch_next[:10]:            
+        for single, enta in arch_next[:5]:
+            print('single:', single, 'enta:', enta)
             design = translator(single, enta, 'full', agent.ARCH_CODE, agent.fold)
             # Evaluate using Scheme (set epochs as needed)
-            model, report = Scheme(design, task, weight, epochs=5)
+            model, report = Scheme(design, task, weight, epochs=0)
             performances.append(report['mae'])
         mean_perf = np.mean(performances) if performances else None
         results[snr] = mean_perf
@@ -54,6 +55,15 @@ def sampling_qubits(search_space, qubits):
 
 if __name__ == "__main__":
     # Setup task and agent
+    # task = {
+    #     'task': 'MNIST_10',
+    #     'option': 'mix_reg',
+    #     'regular': True,
+    #     'n_qubits': 10,
+    #     'n_layers': 4,
+    #     'fold': 2
+    # }
+
     task = {
         'task': 'MNIST_10',
         'option': 'mix_reg',
@@ -62,15 +72,6 @@ if __name__ == "__main__":
         'n_layers': 4,
         'fold': 2
     }
-
-    # task = {
-    #     'task': 'MNIST_10',
-    #     'option': 'mix_reg',
-    #     'regular': True,
-    #     'n_qubits': 4,
-    #     'n_layers': 4,
-    #     'fold': 1
-    # }
     arch_code = [task['n_qubits'], task['n_layers']]
     arch_code_fold = [task['n_qubits']//task['fold'], task['n_layers']]
     args = Arguments(**task)
@@ -80,7 +81,7 @@ if __name__ == "__main__":
     agent.task_name = task['task'] + '_' + task['option']
     agent.weight = 'init'  # Or load pretrained weights if available
 
-    snr_values = [1, 10, 30, 50]
+    snr_values = [0.01, 0.05, 0.1, 0.5]
     results_all = []
 
     for idx, arch in enumerate(initial_circuits):

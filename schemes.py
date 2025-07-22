@@ -127,27 +127,29 @@ def Scheme(design, task, weight='base', epochs=None, verbs=None, save=None):
     optimizer = optim.Adam(model.QuantumLayer.parameters(), lr=args.qlr)
     train_loss_list, val_loss_list = [], []
     best_val_loss = 0
-    # print('val_loss: ', evaluate(model, val_loader, args))
     start = time.time()
-    for epoch in range(epochs):
-        try:
-            train(model, train_loader, optimizer, criterion, args)
-        except Exception as e:
-            print('No parameter gate exists')
-        train_loss = test(model, train_loader, criterion, args)
-        train_loss_list.append(train_loss)        
-        val_loss = evaluate(model, val_loader, args)
-        val_loss_list.append(val_loss)
-        metrics = evaluate(model, test_loader, args)
-        val_loss = 0.5 *(val_loss+train_loss[-1])
-        if val_loss > best_val_loss:
-            best_val_loss = val_loss
-            if not verbs: print(epoch, train_loss, val_loss_list[-1], metrics, 'saving model')
-            best_model = copy.deepcopy(model)           
-        else:
-            if not verbs: print(epoch, train_loss, val_loss_list[-1], metrics)        
-    end = time.time()    
-    # best_model = model
+    if epochs == 0:
+        print('No training epochs specified, skipping training.')
+        best_model = model
+    else:        
+        for epoch in range(epochs):
+            try:
+                train(model, train_loader, optimizer, criterion, args)
+            except Exception as e:
+                print('No parameter gate exists')
+            train_loss = test(model, train_loader, criterion, args)
+            train_loss_list.append(train_loss)        
+            val_loss = evaluate(model, val_loader, args)
+            val_loss_list.append(val_loss)
+            metrics = evaluate(model, test_loader, args)
+            val_loss = 0.5 *(val_loss+train_loss[-1])
+            if val_loss > best_val_loss:
+                best_val_loss = val_loss
+                if not verbs: print(epoch, train_loss, val_loss_list[-1], metrics, 'saving model')
+                best_model = copy.deepcopy(model)           
+            else:
+                if not verbs: print(epoch, train_loss, val_loss_list[-1], metrics)        
+    end = time.time()        
     metrics = evaluate(best_model, test_loader, args)
     display(metrics)
     print("Running time: %s seconds" % (end - start))

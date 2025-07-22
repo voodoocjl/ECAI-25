@@ -276,6 +276,7 @@ class MCTS:
 
         # Compute scaling factor c
         decoder = self.ROOT.classifier.GVAE_model.decoder
+        decoder.eval()
         d = x.shape[2]  # Dimensionality
         c = self.compute_scaling_factor(x, decoder, snr, d)
         n_qubit = self.ARCH_CODE[0] // self.fold
